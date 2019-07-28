@@ -1,0 +1,137 @@
+/* Example tokeninput style #2: wpc style */
+ul.token-input-list-wpc {
+    overflow: hidden;
+    height: auto !important;
+    height: 1%;
+    width: 100%;
+    border: 1px solid #ddd;
+    cursor: text;
+    font-size: 12px;
+    min-height: 1px;
+    z-index: 999;
+    display: inline-block;
+    margin: 10px 0 0 0;
+    padding: 0 5px 5px 5px;
+    background-color: #fff;
+    list-style-type: none;
+    clear: left;
+    box-sizing: border-box;
+}
+
+ul.token-input-list-wpc li input {
+    border: 0;
+    width: 100px;
+    padding: 0;
+    height: 24px !important;
+    line-height: 24px !important;
+    box-shadow: none;
+    background-color: white;
+    margin: 5px 5px 0 0;
+    -webkit-appearance: caret;
+    box-sizing: border-box;
+}
+
+ul.token-input-list-wpc li input:focus, ul.token-input-list-wpc li input:active {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+li.token-input-token-wpc {
+    overflow: hidden;
+    height: 24px;
+    padding: 0 8px;
+    line-height: 22px;
+    margin-right: 5px;
+    margin-top: 5px;
+    margin-bottom: 0;
+    color: #000;
+    cursor: default;
+    font-size: 11px;
+    background-color: #f7f7f7;
+    border: 1px solid #eee;
+    border-radius: 0;
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0;
+    float: left;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+li.token-input-token-wpc p {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    float: left;
+    line-height: 22px;
+}
+
+li.token-input-token-wpc span {
+    color: #999;
+    margin-left: 5px;
+    font-weight: 400;
+    cursor: pointer;
+    line-height: 1;
+}
+
+li.token-input-selected-token-wpc {
+    background-color: #5670a6;
+    border: 1px solid #3b5998;
+    color: #fff;
+}
+
+li.token-input-input-token-wpc {
+    float: left;
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+
+div.token-input-dropdown-wpc {
+    position: absolute;
+    width: 400px;
+    background-color: #fff;
+    overflow: hidden;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    cursor: default;
+    font-size: 12px;
+    z-index: 1;
+}
+
+div.token-input-dropdown-wpc p {
+    margin: 0;
+    padding: 5px;
+    font-weight: 400;
+    color: #777;
+}
+
+div.token-input-dropdown-wpc ul {
+    margin: 0;
+    padding: 0;
+}
+
+div.token-input-dropdown-wpc ul li {
+    background-color: #fff;
+    padding: 3px;
+    margin: 0;
+    list-style-type: none;
+}
+
+div.token-input-dropdown-wpc ul li.token-input-dropdown-item-wpc {
+    background-color: #fff;
+}
+
+div.token-input-dropdown-wpc ul li.token-input-dropdown-item2-wpc {
+    background-color: #fff;
+}
+
+div.token-input-dropdown-wpc ul li em {
+    font-weight: bold;
+    font-style: normal;
+}
+
+div.token-input-dropdown-wpc ul li.token-input-selected-dropdown-item-wpc {
+    background-color: #0073aa;
+    color: #fff;
+}
