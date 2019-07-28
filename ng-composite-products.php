@@ -82,12 +82,6 @@ if ( ! function_exists( 'wooco_init' ) ) {
 					return get_post_meta( $product_id, 'wooco_pricing', 'exclude' ) === 'only';
         }
 
-				public function is_cost_extra() {
-					$product_id = $this->id;
-
-					return get_post_meta( $product_id, 'wooco_pricing', 'exclude' ) === 'only';
-				}
-
 				public function get_pricing() {
 					$product_id = $this->id;
 
@@ -820,7 +814,12 @@ if ( ! function_exists( 'wooco_init' ) ) {
 					// This is necessary for WC 3.0+
 					if ( ! defined( 'DOING_AJAX' ) && is_admin() ) {
 						return;
-					}
+          }
+
+          // Avoiding hook repetition (when using price calculations for example)
+          if (did_action('woocommerce_before_calculate_totals') >= 2) {
+            return;
+          }
 
 					foreach ( $cart_object->get_cart() as $cart_item_key => $cart_item ) {
 
@@ -836,6 +835,9 @@ if ( ! function_exists( 'wooco_init' ) ) {
 
                 // update component prices
                 $price = $this->getFinalPrice($cart_item);
+                if (!is_checkout()) { // debugging
+                  echo '<h2>Item: ' . wc_get_product($cart_item['product_id'])->get_title() . ' - Final price: '.$price.'</h2>';
+                }
                 $cart_item['data']->set_price($price);
 
                 if ( ( $wooco_discount_percent = get_post_meta( $cart_item['wooco_parent_id'], 'wooco_discount_percent', true ) ) && is_numeric( $wooco_discount_percent ) && ( (float) $wooco_discount_percent < 100 ) && ( (float) $wooco_discount_percent > 0 ) ) {
@@ -861,15 +863,13 @@ if ( ! function_exists( 'wooco_init' ) ) {
 
         function getFinalPrice($cart_item)
         {
-
           // check if is free in package & return price
           $item_id = $cart_item['product_id'];
-          $price = get_post_meta($cart_item['product_id'], '_price', true);
+          $price = floatval($cart_item['data']->get_price());
 
           $components_arr = get_post_meta($cart_item['wooco_parent_id'], 'wooco_components'); // gets package menu components
           foreach ($components_arr as $components) {
             foreach ($components as $component) {
-              // die(print_r($component));
 
               $found = false;
               if (is_array($component['products'])) {
@@ -880,21 +880,24 @@ if ( ! function_exists( 'wooco_init' ) ) {
                 $found = true;
               }
               if ($found) {
-                // $cart_item['data']->set_price(0);
+
                 $free = $component['cost_extra'] == 'no';
                 $qty_free = $component['qty_free'];
+                $final_price = (($cart_item['quantity'] - $qty_free) * $price) / $cart_item['quantity'];
 
-                // debug
+                // for debugging
+                if (!is_checkout()) {
                 echo '<strong> ' . $component['name'] . ':</strong>
                             quantity in cart: ' . $cart_item['quantity'] . ';
                             free: ' . ($free ? 'yes' : 'no') . ';
                             price: ' . (empty($price) ? '0' : $price) . ';
                             qty_free: ' . $qty_free . '<br>';
+                }
 
                 if ($free && $cart_item['quantity'] <= $qty_free) { // don't charge extra
                   return 0;
                 } else { // only charge for extras
-                  return ($cart_item['quantity'] - $qty_free) * $price;
+                  return $final_price;
                 }
               }
             }
