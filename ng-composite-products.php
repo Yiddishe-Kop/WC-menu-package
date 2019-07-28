@@ -80,6 +80,12 @@ if ( ! function_exists( 'wooco_init' ) ) {
 					$product_id = $this->id;
 
 					return get_post_meta( $product_id, 'wooco_pricing', 'exclude' ) === 'only';
+        }
+
+				public function is_cost_extra() {
+					$product_id = $this->id;
+
+					return get_post_meta( $product_id, 'wooco_pricing', 'exclude' ) === 'only';
 				}
 
 				public function get_pricing() {
@@ -624,13 +630,14 @@ if ( ! function_exists( 'wooco_init' ) ) {
 				}
 
 				function wooco_cart_item_price( $price, $cart_item ) {
+
 					if ( isset( $cart_item['wooco_ids'], $cart_item['wooco_keys'] ) && method_exists( $cart_item['data'], 'is_fixed_price' ) && ! $cart_item['data']->is_fixed_price() ) {
 						// composite
 						$wooco_price = $cart_item['data']->get_pricing() === 'include' ? $cart_item['data']->get_price() : 0;
 						foreach ( $cart_item['wooco_keys'] as $cart_item_key ) {
 							if ( isset( WC()->cart->cart_contents[ $cart_item_key ] ) ) {
 								$wooco_price += WC()->cart->cart_contents[ $cart_item_key ]['data']->get_price() * WC()->cart->cart_contents[ $cart_item_key ]['wooco_qty'];
-							}
+              }
 						}
 
 						return wc_price( $wooco_price );
@@ -646,6 +653,9 @@ if ( ! function_exists( 'wooco_init' ) ) {
 						}
 					}
 
+          // global $woocommerce;
+          // echo '<code>subtotal: '.print_r(WC()->cart->get_cart_contents()).'</code>';
+          // echo '<code>subtotal: '.print_r($woocommerce->cart->empty_cart()).'</code>';
 					return $price;
 				}
 
@@ -670,7 +680,7 @@ if ( ! function_exists( 'wooco_init' ) ) {
 
 							return wc_price( $item_product->get_price() * $cart_item['quantity'] );
 						}
-					}
+          }
 
 					return $subtotal;
 				}
@@ -798,7 +808,7 @@ if ( ! function_exists( 'wooco_init' ) ) {
 								}
 							} else {
 								WC()->cart->remove_cart_item( $cart_item_key );
-								wc_add_notice( esc_html__( 'Have an error when adding this Menu Packages to the cart.', 'wpc-composite-products' ), 'error' );
+								wc_add_notice( esc_html__( 'An error occured when adding this Menu Package to the cart.', 'wpc-composite-products' ), 'error' );
 
 								return false;
 							}
@@ -813,6 +823,7 @@ if ( ! function_exists( 'wooco_init' ) ) {
 					}
 
 					foreach ( $cart_object->get_cart() as $cart_item_key => $cart_item ) {
+
 						// child product price
 						if ( isset( $cart_item['wooco_parent_id'] ) && ( $cart_item['wooco_parent_id'] !== '' ) ) {
 							$parent_product = wc_get_product( $cart_item['wooco_parent_id'] );
@@ -821,15 +832,22 @@ if ( ! function_exists( 'wooco_init' ) ) {
 							}
 							if ( method_exists( $parent_product, 'is_fixed_price' ) && $parent_product->is_fixed_price() ) {
 								$cart_item['data']->set_price( 0 );
-							} elseif ( ( $wooco_discount_percent = get_post_meta( $cart_item['wooco_parent_id'], 'wooco_discount_percent', true ) ) && is_numeric( $wooco_discount_percent ) && ( (float) $wooco_discount_percent < 100 ) && ( (float) $wooco_discount_percent > 0 ) ) {
-								if ( $cart_item['variation_id'] > 0 ) {
-									$wooco_product = wc_get_product( $cart_item['variation_id'] );
-								} else {
-									$wooco_product = wc_get_product( $cart_item['product_id'] );
-								}
-								$wooco_product_price = $wooco_product->get_price() * ( 100 - (float) $wooco_discount_percent ) / 100;
-								$cart_item['data']->set_price( (float) $wooco_product_price );
-							}
+              } else {
+
+                // update component prices
+                $price = $this->getFinalPrice($cart_item);
+                $cart_item['data']->set_price($price);
+
+                if ( ( $wooco_discount_percent = get_post_meta( $cart_item['wooco_parent_id'], 'wooco_discount_percent', true ) ) && is_numeric( $wooco_discount_percent ) && ( (float) $wooco_discount_percent < 100 ) && ( (float) $wooco_discount_percent > 0 ) ) {
+                  if ( $cart_item['variation_id'] > 0 ) {
+                    $wooco_product = wc_get_product( $cart_item['variation_id'] );
+                  } else {
+                    $wooco_product = wc_get_product( $cart_item['product_id'] );
+                  }
+                  $wooco_product_price = $wooco_product->get_price() * ( 100 - (float) $wooco_discount_percent ) / 100;
+                  $cart_item['data']->set_price( (float) $wooco_product_price );
+                }
+              }
 						}
 
 						// main product price
@@ -839,7 +857,50 @@ if ( ! function_exists( 'wooco_init' ) ) {
 							}
 						}
 					}
-				}
+        }
+
+        function getFinalPrice($cart_item)
+        {
+
+          // check if is free in package & return price
+          $item_id = $cart_item['product_id'];
+          $price = get_post_meta($cart_item['product_id'], '_price', true);
+
+          $components_arr = get_post_meta($cart_item['wooco_parent_id'], 'wooco_components'); // gets package menu components
+          foreach ($components_arr as $components) {
+            foreach ($components as $component) {
+              // die(print_r($component));
+
+              $found = false;
+              if (is_array($component['products'])) {
+                if (in_array($item_id, $component['products'])) {
+                  $found = true;
+                }
+              } elseif ($item_id == $component['products']) {
+                $found = true;
+              }
+              if ($found) {
+                // $cart_item['data']->set_price(0);
+                $free = $component['cost_extra'] == 'no';
+                $qty_free = $component['qty_free'];
+
+                // debug
+                echo '<strong> ' . $component['name'] . ':</strong>
+                            quantity in cart: ' . $cart_item['quantity'] . ';
+                            free: ' . ($free ? 'yes' : 'no') . ';
+                            price: ' . (empty($price) ? '0' : $price) . ';
+                            qty_free: ' . $qty_free . '<br>';
+
+                if ($free && $cart_item['quantity'] <= $qty_free) { // don't charge extra
+                  return 0;
+                } else { // only charge for extras
+                  return ($cart_item['quantity'] - $qty_free) * $price;
+                }
+              }
+            }
+          }
+          return $price;
+        }
 
 				function wooco_item_visible( $visible, $item ) {
 					if ( isset( $item['wooco_parent_id'] ) ) {
@@ -1113,7 +1174,9 @@ if ( ! function_exists( 'wooco_init' ) ) {
 						'qty'        => 1,
 						'custom_qty' => 'no',
 						'min'        => 0,
-						'max'        => 1000
+            'max'        => 1000,
+            'cost_extra' => 'no',
+            'qty_free'   => 1,
 					)
 				) {
 					$wooco_search_products_id   = uniqid( 'wooco_search_products-', false );
@@ -1499,7 +1562,8 @@ if ( ! function_exists( 'wooco_init' ) ) {
 					global $product;
 					$product_id = $product->get_id();
 					if ( $wooco_components = $product->get_components() ) {
-						echo '<div class="wooco_wrap wooco-wrap">';
+            echo '<div class="wooco_wrap wooco-wrap">';
+            // echo print_r($wooco_components);
 						if ( $wooco_before_text = apply_filters( 'wooco_before_text', get_post_meta( $product_id, 'wooco_before_text', true ), $product_id ) ) {
 							echo '<div class="wooco_before_text wooco-before-text wooco-text">' . do_shortcode( stripslashes( $wooco_before_text ) ) . '</div>';
 						}
