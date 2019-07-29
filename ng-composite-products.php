@@ -19,7 +19,6 @@ defined( 'ABSPATH' ) || exit;
 ! defined( 'WPC_URI' ) && define( 'WPC_URI', WOOCO_URI );
 
 include 'includes/wpc-menu.php';
-include 'includes/wpc-dashboard.php';
 
 if ( ! function_exists( 'wooco_init' ) ) {
 	add_action( 'plugins_loaded', 'wooco_init', 11 );
@@ -883,7 +882,7 @@ if ( ! function_exists( 'wooco_init' ) ) {
 
                 $free = $component['cost_extra'] == 'no';
                 $qty_free = $component['qty_free'];
-                $final_price = (($cart_item['quantity'] - $qty_free) * $price) / $cart_item['quantity'];
+                $final_price = (($cart_item['quantity'] - $qty_free) * $price) / $cart_item['quantity']; // this is the trick! [divide by qty]
 
                 // for debugging
                 if (!is_checkout()) {
