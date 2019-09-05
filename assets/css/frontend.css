@@ -87,3 +87,16 @@ body.woocommerce-no-js .wooco-wrap + form.cart {
 .wooco-item-child .product-total .tax_label {
   opacity: 0.3;
 }
+
+.pill {
+  margin-inline-start: 20px;
+  padding: 3px 8px;
+  background-color: var(--grey2);
+  color: var(--grey6);
+  border-radius: 8px;
+}
+
+.pill.deluxe {
+  background-color: var(--green2);
+  color: var(--green6);
+}

@@ -127,6 +127,10 @@ if (!function_exists('wooco_init')) {
                     // Add to selector
                     add_filter('product_type_selector', array($this, 'wooco_product_type_selector'));
 
+                    // Deluxe pricing
+                    add_action('woocommerce_product_options_pricing', array($this, 'deluxe_pricing'));
+                    add_action('woocommerce_process_product_meta', array($this, 'deluxe_pricing_save'));
+
                     // Product data tabs
                     add_filter('woocommerce_product_data_tabs', array($this, 'wooco_product_data_tabs'), 10, 1);
 
@@ -610,16 +614,27 @@ if (!function_exists('wooco_init')) {
                 }
 
                 function wooco_cart_item_name($name, $item) {
+
+                    $output = '';
+
                     if (isset($item['wooco_parent_id']) && !empty($item['wooco_parent_id']) && (get_option('_wooco_hide_composite_name', 'no') === 'no')) {
+
                         if (strpos($name, '</a>') !== false) {
-                            return '<a href="' . get_permalink($item['wooco_parent_id']) . '">' . get_the_title($item['wooco_parent_id']) . '</a> &rarr; ' . $name;
+                            $output .= '<a href="' . get_permalink($item['wooco_parent_id']) . '">' . get_the_title($item['wooco_parent_id']) . '</a> &rarr; ' . $name;
+                        } else {
+                            $output .= get_the_title($item['wooco_parent_id']) . ' &rarr; ' . strip_tags($name);
                         }
-
-                        return get_the_title($item['wooco_parent_id']) . ' &rarr; ' . strip_tags($name);
-
                     }
 
-                    return $name;
+                    if (isset($item['is_deluxe'])) {
+                        if ($item['is_deluxe'] == 'true') {
+                            $output .= $name . '<span class="pill deluxe">Deluxe</span>';
+                        } else {
+                            $output .= $name . '<span class="pill">Basic</span>';
+                        }
+                    }
+
+                    return ($output == '' ? $name : $output);
                 }
 
                 function wooco_cart_item_price($price, $cart_item) {
@@ -735,6 +750,11 @@ if (!function_exists('wooco_init')) {
                             unset($_POST['wooco_ids']);
                         }
 
+                        if (isset($_POST['is_deluxe'])) {
+                            $is_deluxe = $_POST['is_deluxe'];
+                            unset($_POST['is_deluxe']);
+                        }
+
                         if (isset($_POST['wooco_total'])) {
                             $wooco_total = $_POST['wooco_total'];
                             unset($_POST['wooco_total']);
@@ -743,6 +763,9 @@ if (!function_exists('wooco_init')) {
                         $wooco_ids = $this->wooco_clean_ids($wooco_ids);
                         if (!empty($wooco_ids)) {
                             $cart_item_data['wooco_ids'] = $wooco_ids;
+                        }
+                        if (!empty($is_deluxe)) {
+                            $cart_item_data['is_deluxe'] = $is_deluxe;
                         }
                         if (!empty($wooco_total)) {
                             $cart_item_data['wooco_total'] = $wooco_total;
@@ -832,7 +855,18 @@ if (!function_exists('wooco_init')) {
                         // cart total price
                         if (isset($cart_item['wooco_total']) && ($cart_item['wooco_total'] !== '') && $cart_item['data']->is_type('composite')) {
                             // echo 'SETTING TOTAL TO $' . $cart_item['wooco_total'];
-                            $cart_item['data']->set_price($cart_item['wooco_total']);
+                            $base_package_price = wc_get_product($cart_item['product_id'])->get_price();
+                            $deluxe_package_price = get_post_meta($cart_item['product_id'], '_deluxe_price', true);
+
+                            $is_deluxe = $cart_item['is_deluxe'] == 'true';
+                            $base_price = $is_deluxe ? $deluxe_package_price : $base_package_price;
+
+                            if ($base_price <= $cart_item['wooco_total']) {
+                                $cart_item['data']->set_price($cart_item['wooco_total']);
+                            } else {
+                                // some hacker hacked the price - sound the alarm!
+                                $cart_item['data']->set_price($base_price);
+                            }
                         }
                         // echo print_r($cart_item, true) . ' <| ';
 
@@ -961,7 +995,7 @@ if (!function_exists('wooco_init')) {
                     }
                     $wooco_items_str = trim($wooco_items_str, '; ');
                     $item_data[] = array(
-                        'key' => esc_html__('Food Components', 'wpc-composite-products'),
+                        'key' => esc_html__('Courses', 'wpc-composite-products'),
                         'value' => $wooco_items_str,
                         'display' => '',
                     );
@@ -984,7 +1018,7 @@ if (!function_exists('wooco_init')) {
                         }
                     }
                     $wooco_items_str = trim($wooco_items_str, '; ');
-                    $item->add_meta_data(esc_html__('Food Components', 'wpc-composite-products'), $wooco_items_str);
+                    $item->add_meta_data(esc_html__('Courses', 'wpc-composite-products'), $wooco_items_str);
                 }
 
                 function wooco_order_item_get_formatted_meta_data($formatted_meta) {
@@ -1149,15 +1183,34 @@ if (!function_exists('wooco_init')) {
                     die();
                 }
 
+                public function deluxe_pricing() {
+                    global $post;
+                    echo '</div><div class="options_group show_if_composite">';
+                    $deluxe_price = get_post_meta($post->ID, '_deluxe_price', true);
+
+                    woocommerce_wp_text_input(array(
+                        'id' => '_deluxe_price',
+                        'label' => 'Deluxe Price',
+                        'type' => 'number',
+                        'value' => $deluxe_price,
+                        'desc_tip' => true,
+                        'description' => 'Insert the Deluxe Package price here.',
+                    ));
+                }
+
+                public function deluxe_pricing_save($post_id) {
+                    $_deluxe_price = !empty($_POST['_deluxe_price']) ? $_POST['_deluxe_price'] : '';
+                    update_post_meta($post_id, '_deluxe_price', $_deluxe_price);
+                }
+
                 function wooco_product_type_selector($types) {
                     $types['composite'] = esc_html__('Menu Package', 'wpc-composite-products');
-
                     return $types;
                 }
 
                 function wooco_product_data_tabs($tabs) {
                     $tabs['composite'] = array(
-                        'label' => esc_html__('Food Components', 'wpc-composite-products'),
+                        'label' => esc_html__('Courses', 'wpc-composite-products'),
                         'target' => 'wooco_settings',
                         'class' => array('show_if_composite'),
                     );
@@ -1166,32 +1219,31 @@ if (!function_exists('wooco_init')) {
                 }
 
                 function wooco_add_component() {
-
                     $this->wooco_component(true);
                     die();
                 }
 
                 function wooco_component(
                     $active = false,
-                    // 'cost_extra' => 'no',
                     $component = array(
                         'name' => 'Name',
                         'desc' => 'Description',
-                        'type' => '',
+                        'type' => 'products',
                         'categories' => '',
                         'products' => '',
                         'default' => '',
+                        'deluxe_only' => 'no',
                         'optional' => 'no',
                         'qty' => 1,
                         'custom_qty' => 'no',
                         'min' => 0,
-                        'max' => 1000,
+                        'max' => 100,
                         'qty_free' => 1,
+                        'qty_free_deluxe' => 1,
                         'section' => 'night',
                     )
                 ) {
                     $wooco_search_products_id = uniqid('wooco_search_products-', false);
-                    $wooco_search_categories_id = uniqid('wooco_search_categories-', false);
                     $wooco_search_default_id = uniqid('wooco_search_default-', false);
                     $pre_populate_products = $pre_populate_categories = $pre_populate_default = '';
                     if ($component['products'] !== '') {
@@ -1199,13 +1251,6 @@ if (!function_exists('wooco_init')) {
                         foreach ($value_items as $value_item) {
                             $value_item_info = get_post($value_item);
                             $pre_populate_products .= '{id: ' . $value_item_info->ID . ', name: "' . $value_item_info->post_title . '"},';
-                        }
-                    }
-                    if ($component['categories'] !== '') {
-                        $value_items = explode(',', $component['categories']);
-                        foreach ($value_items as $value_item) {
-                            $value_item_info = get_term_by('id', $value_item, 'product_cat');
-                            $pre_populate_categories .= '{id: "' . $value_item . '", name: "' . $value_item_info->name . '"},';
                         }
                     }
                     if ($component['default'] !== '') {
@@ -1223,56 +1268,43 @@ if (!function_exists('wooco_init')) {
                                        href="#"><?php esc_html_e('remove', 'wpc-composite-products');?></a>
                                 </div>
                                 <div class="wooco_component_content">
-                                    <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Name', 'wpc-composite-products');?>
+                                   <div class="wooco_component_content_line">
+                                        <div class="wooco_component_content_line_label">In which Section?</div>
+                                        <div class="wooco_component_content_line_value">
+                                        <select name="wooco_components[section][]">
+                                          <option value="night" <?php echo ($component['section'] === 'night' ? 'selected' : ''); ?>>Night Meal</option>
+                                          <option value="day" <?php echo ($component['section'] === 'day' ? 'selected' : ''); ?>>Day Meal</option>
+                                          <option value="extras" <?php echo ($component['section'] === 'extras' ? 'selected' : ''); ?>>Extras</option>
+                                        </select>
                                         </div>
+                                    </div>
+                                    <div class="wooco_component_content_line">
+                                        <div class="wooco_component_content_line_label">Course Name</div>
                                         <div class="wooco_component_content_line_value">
                                             <input name="wooco_components[name][]" type="text" class="wooco_input_name"
                                                    value="<?php echo $component['name']; ?>"/>
                                         </div>
                                     </div>
                                     <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Description', 'wpc-composite-products');?>
-                                        </div>
+                                        <div class="wooco_component_content_line_label">Course Description</div>
                                         <div class="wooco_component_content_line_value">
                                             <textarea
                                                     name="wooco_components[desc][]"><?php echo $component['desc']; ?></textarea>
                                         </div>
                                     </div>
                                     <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Source', 'wpc-composite-products');?>
-                                        </div>
+                                        <div class="wooco_component_content_line_label">Products in this Course</div>
                                         <div class="wooco_component_content_line_value">
-                                            <select name="wooco_components[type][]" class="wooco_component_type">
-                                                <option value=""><?php esc_html_e('Select source', 'wpc-composite-products');?></option>
-                                                <option value="categories" <?php echo ($component['type'] === 'categories' ? 'selected' : ''); ?>>
-													<?php esc_html_e('Categories', 'wpc-composite-products');?>
-                                                </option>
-                                                <option value="products" <?php echo ($component['type'] === 'products' ? 'selected' : ''); ?>>
-													<?php esc_html_e('Products', 'wpc-composite-products');?>
-                                                </option>
-                                            </select>
-                                            <div class="wooco_hide wooco_show_if_categories">
-                                                <input id="<?php echo $wooco_search_categories_id; ?>"
-                                                       class="wooco_search_categories"
-                                                       name="wooco_components[categories][]" type="text"
-                                                       value="<?php echo $component['categories']; ?>"/>
-                                            </div>
-                                            <div class="wooco_hide wooco_show_if_products">
-                                                <input id="<?php echo $wooco_search_products_id; ?>"
-                                                       class="wooco_search_products"
-                                                       name="wooco_components[products][]" type="text"
-                                                       value="<?php echo $component['products']; ?>"/>
-                                            </div>
+                                          <input name="wooco_components[type][]" type="hidden" value="products"/>
+
+                                          <input id="<?php echo $wooco_search_products_id; ?>"
+                                                  class="wooco_search_products"
+                                                  name="wooco_components[products][]" type="text"
+                                                  value="<?php echo $component['products']; ?>"/>
                                         </div>
                                     </div>
                                     <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Default option', 'wpc-composite-products');?>
-                                        </div>
+                                        <div class="wooco_component_content_line_label">Default selected option</div>
                                         <div class="wooco_component_content_line_value">
                                             <input id="<?php echo $wooco_search_default_id; ?>"
                                                    class="wooco_search_products"
@@ -1280,84 +1312,48 @@ if (!function_exists('wooco_init')) {
                                                    value="<?php echo $component['default']; ?>"/>
                                         </div>
                                     </div>
-									<?php echo '<script>jQuery("#' . $wooco_search_categories_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=taxonomy&ajax_get=product_cat&ajax_field=id", {
-                prePopulate: [' . $pre_populate_categories . '], theme: "wpc", hintText: "Type to search category"}); jQuery("#' . $wooco_search_products_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id", {
+									<?php echo '<script>jQuery("#' . $wooco_search_products_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id", {
                 prePopulate: [' . $pre_populate_products . '], theme: "wpc", hintText: "Type to search product"}); jQuery("#' . $wooco_search_default_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id", {
                 prePopulate: [' . $pre_populate_default . '], tokenLimit: 1, theme: "wpc", hintText: "Type to search product"});</script>'; ?>
                                     <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Required', 'wpc-composite-products');?>
+                                        <div class="wooco_component_content_line_label">Only in Deluxe?</div>
+                                        <div class="wooco_component_content_line_value">
+                                            <select name="wooco_components[deluxe_only][]">
+                                              <option value="no" <?php echo ($component['deluxe_only'] === 'no' ? 'selected' : ''); ?>>No</option>
+                                              <option value="yes" <?php echo ($component['deluxe_only'] === 'yes' ? 'selected' : ''); ?>>Yes</option>
+                                            </select>
                                         </div>
+                                    </div>
+                                    <div class="wooco_component_content_line">
+                                        <div class="wooco_component_content_line_label">Optional?</div>
                                         <div class="wooco_component_content_line_value">
                                             <select name="wooco_components[optional][]">
-                                                <option value="no" <?php echo ($component['optional'] === 'no' ? 'selected' : ''); ?>>
-													<?php esc_html_e('Yes', 'wpc-composite-products');?>
-                                                </option>
-                                                <option value="yes" <?php echo ($component['optional'] === 'yes' ? 'selected' : ''); ?>>
-													<?php esc_html_e('No', 'wpc-composite-products');?>
-                                                </option>
+                                              <option value="no" <?php echo ($component['optional'] === 'no' ? 'selected' : ''); ?>>No</option>
+                                              <option value="yes" <?php echo ($component['optional'] === 'yes' ? 'selected' : ''); ?>>Yes</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Quantity', 'wpc-composite-products');?>
-                                        </div>
-                                        <div class="wooco_component_content_line_value">
-                                            <input name="wooco_components[qty][]" type="number" min="1" step="1"
-                                                   value="<?php echo $component['qty']; ?>" required/>
-                                        </div>
-                                    </div>
-                                    <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-                                            Can add extra?
-                                        </div>
+                                        <div class="wooco_component_content_line_label">Can add extra?</div>
                                         <div class="wooco_component_content_line_value">
                                             <select name="wooco_components[custom_qty][]">
-                                                <option value="no" <?php echo ($component['custom_qty'] === 'no' ? 'selected' : ''); ?>>
-													<?php esc_html_e('No', 'wpc-composite-products');?>
-                                                </option>
-                                                <option value="yes" <?php echo ($component['custom_qty'] === 'yes' ? 'selected' : ''); ?>>
-													<?php esc_html_e('Yes', 'wpc-composite-products');?>
-                                                </option>
+                                              <option value="no" <?php echo ($component['custom_qty'] === 'no' ? 'selected' : ''); ?>>No</option>
+                                              <option value="yes" <?php echo ($component['custom_qty'] === 'yes' ? 'selected' : ''); ?>>Yes</option>
                                             </select>
-                                        </div>
-                                    </div>
-                                    <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Min', 'wpc-composite-products');?>
-                                        </div>
-                                        <div class="wooco_component_content_line_value">
-                                            <input name="wooco_components[min][]" type="number" min="0"
-                                                   value="<?php echo $component['min']; ?>"/>
-                                        </div>
-                                    </div>
-                                    <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">
-											<?php esc_html_e('Max', 'wpc-composite-products');?>
-                                        </div>
-                                        <div class="wooco_component_content_line_value">
-                                            <input name="wooco_components[max][]" type="number" min="0"
-                                                   value="<?php echo $component['max']; ?>"/>
                                         </div>
                                     </div>
                                     <!-- SilverSpoon Settings -->
                                     <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">How much included for free in package?</div>
+                                        <div class="wooco_component_content_line_label">How much included for free in Basic package?</div>
                                         <div class="wooco_component_content_line_value">
                                             <input name="wooco_components[qty_free][]" type="number" min="0" max="100" value="<?php echo $component['qty_free']; ?>"/>
                                         </div>
-                                    </div>
-                                    <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">Section:</div>
+                                        <div class="wooco_component_content_line_label">How much included for free in Deluxe package?</div>
                                         <div class="wooco_component_content_line_value">
-                                        <select name="wooco_components[section][]">
-                                          <option value="night" <?php echo ($component['section'] === 'night' ? 'selected' : ''); ?>>Friday Night</option>
-                                          <option value="day" <?php echo ($component['section'] === 'day' ? 'selected' : ''); ?>>Shabbos Day</option>
-                                          <option value="extras" <?php echo ($component['section'] === 'extras' ? 'selected' : ''); ?>>Extras</option>
-                                        </select>
+                                            <input name="wooco_components[qty_free_deluxe][]" type="number" min="0" max="100" value="<?php echo $component['qty_free_deluxe']; ?>"/>
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                         </td>
@@ -1387,7 +1383,7 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                             <tr>
                                 <td>
                                     <a href="#" class="wooco_add_component button">
-										<?php esc_html_e('+ Add component', 'wpc-composite-products');?>
+										<?php esc_html_e('+ Add Course', 'wpc-composite-products');?>
                                     </a>
                                 </td>
                             </tr>
@@ -1405,7 +1401,7 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                                     <div style="display: inline-block; width: 100%">
 										<?php esc_html_e('"Base price" is the price was set in the General tab.', 'wpc-composite-products');?>
                                         <br/>
-										<?php esc_html_e('If choose "Only base price", the price don\'t change when selecting the component product.', 'wpc-composite-products');?>
+										<?php esc_html_e('If you choose "Only base price", the price don\'t change when selecting the component product.', 'wpc-composite-products');?>
                                     </div>
                                 </td>
                             </tr>
@@ -1416,7 +1412,7 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                                            min="0.0001" step="0.0001"
                                            max="99.9999"
                                            value="<?php echo (get_post_meta($post_id, 'wooco_discount_percent', true) ?: ''); ?>"
-                                           style="width: 80px"/>%. <?php esc_html_e('Only applied for Food Components.', 'wpc-composite-products');?>
+                                           style="width: 80px"/>%. <?php esc_html_e('Only applied for Courses.', 'wpc-composite-products');?>
                                 </td>
                             </tr>
                             <tr class="wooco_tr_space">
@@ -1578,7 +1574,7 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                     $category_name = get_the_category_by_ID($product->get_category_ids()[0]);
 
                     $is_shabbos = $category_name == 'Shabbos';
-                    $shabbos_sections = ['night' => 'Friday Night', 'day' => 'Shabbos Day', 'extras' => 'Extras'];
+                    $shabbos_sections = ['night' => 'Night Meal', 'day' => 'Day Meal', 'extras' => 'Extras'];
 
                     $is_supper = $category_name == 'Gourmet Meals';
                     $supper_sections = ['first' => 'First', 'main' => 'Main', 'extras' => 'Extras'];
@@ -1590,112 +1586,6 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                         // Send data to Vue!!!======================================================================
                         vue_output_menu_packages($product, $sections);
                         // =========================================================================================
-
-                        /*
-                        echo '<div class="wooco_wrap wooco-wrap">';
-                        // echo '<!--<pre>'.print_r($wooco_components, true).'</pre>-->';
-                        if ($wooco_before_text = apply_filters('wooco_before_text', get_post_meta($product_id, 'wooco_before_text', true), $product_id)) {
-                        echo '<div class="wooco_before_text wooco-before-text wooco-text">' . do_shortcode(stripslashes($wooco_before_text)) . '</div>';
-                        }
-                        do_action('wooco_before_components', $product);
-                        ?>
-                        <div class="wooco_components wooco-components"
-                        data-percent="<?php echo esc_attr(get_post_meta($product_id, 'wooco_discount_percent', true)); ?>"
-                        data-min="<?php echo esc_attr(get_post_meta($product_id, 'wooco_qty_min', true)); ?>"
-                        data-max="<?php echo esc_attr(get_post_meta($product_id, 'wooco_qty_max', true)); ?>"
-                        data-price="<?php echo $product->get_price(); ?>"
-                        data-pricing="<?php echo esc_attr($product->get_pricing()); ?>">
-                        <?php
-                        $wooco_component_i = 1;
-
-                        // sections start ===================================================
-                        foreach ($sections as $key => $section_name) {
-
-                        ?>
-                        <div class="section-wrapper">
-                        <h3 class="section-title"><?php echo $section_name ?></h3>
-                        <?php
-                        foreach ($wooco_components as $wooco_component) {
-                        if ($wooco_component['section'] != $key || (($wooco_component_type = $wooco_component['type']) === '') || empty($wooco_component[$wooco_component_type])) {
-                        continue;
-                        }
-                        ?>
-                        <div class="wooco_component">
-                        <?php
-                        if (!empty($wooco_component['name'])) {
-                        echo '<div class="wooco_component_name">' . $wooco_component['name'] . '</div>';
-                        }
-                        if (!empty($wooco_component['desc'])) {
-                        echo '<div class="wooco_component_desc">' . $wooco_component['desc'] . '</div>';
-                        }
-                        $wooco_component_default = isset($wooco_component['default']) ? (int) $wooco_component['default'] : 0;
-                        if ($wooco_products = $this->wooco_get_products($wooco_component['type'], $wooco_component[$wooco_component_type], $wooco_component_default)) {
-                        ?>
-                        <div class="wooco_component_product" data-id="0" data-price="0"
-                        data-qty="<?php echo esc_attr($wooco_component['qty']); ?>"
-                        data-optional="<?php echo esc_attr($wooco_component['optional']); ?>"
-                        data-qty_free="<?php echo esc_attr($wooco_component['qty_free']); ?>">
-                        <div class="wooco_component_product_selection">
-                        <select class="wooco_component_product_select"
-                        id="<?php echo esc_attr('wooco_component_product_select_' . $wooco_component_i); ?>">
-                        <?php
-                        if ($wooco_component['optional'] === 'yes') {
-                        echo '<option value="0" data-qty="0" data-price="" data-link="" data-price-html="" data-imagesrc="' . wc_placeholder_img_src() . '" data-description="' . esc_html__('Do not select products', 'wpc-composite-products') . '">' . esc_html__('No', 'wpc-composite-products') . '</option>';
-                        }
-                        foreach ($wooco_products as $wooco_product) {
-                        if ($wooco_product['purchasable'] === 'yes') {
-                        echo '<option value="' . $wooco_product['id'] . '" data-price="' . $wooco_product['price'] . '" data-link="' . $wooco_product['link'] . '"  data-imagesrc="' . $wooco_product['image'] . '" data-description="' . $wooco_product['price_html'] . '" ' . ($wooco_product['id'] == $wooco_component['default'] ? 'selected' : '') . '>' . ($wooco_component['custom_qty'] !== 'yes' ? $wooco_component['qty'] . ' &times; ' . $wooco_product['name'] : $wooco_product['name']) . '</option>';
-                        } else {
-                        echo '<option value="0" data-price="0" data-link="' . $wooco_product['link'] . '"  data-imagesrc="' . $wooco_product['image'] . '" data-description="' . esc_html__('Out of stock', 'wpc-composite-products') . '" ' . ($wooco_product['id'] == $wooco_component['default'] ? 'selected' : '') . '>&lt;s&gt;' . ($wooco_component['custom_qty'] !== 'yes' ? $wooco_component['qty'] . ' &times; ' . $wooco_product['name'] : $wooco_product['name']) . '&lt;/s&gt;</option>';
-                        }
-                        }
-                        ?>
-                        </select>
-                        </div>
-                        <?php if ($wooco_component['custom_qty'] === 'yes') {
-                        $wooco_min = 0;
-                        $wooco_max = 1000;
-                        if (!empty($wooco_component['min'])) {
-                        $wooco_min = absint($wooco_component['min']);
-                        }
-                        if (!empty($wooco_component['max'])) {
-                        $wooco_max = absint($wooco_component['max']);
-                        }
-                        ?>
-                        <div class="wooco_component_product_qty">
-                        <?php esc_html_e('Qty:', 'wpc-composite-products');?> <input
-                        class="wooco_component_product_qty_input"
-                        type="number"
-                        min="<?php echo esc_attr($wooco_min); ?>"
-                        max="<?php echo esc_attr($wooco_max); ?>"
-                        step="1"
-                        value="<?php echo esc_attr($wooco_component['qty']); ?>"/>
-                        </div>
-                        <?php }?>
-                        </div>
-                        <?php
-                        }
-                        ?>
-                        </div>
-                        <?php
-                        $wooco_component_i++;
-                        }
-                        ?>
-                        </div>
-                        <?php
-                        }
-                        // sections end ===================================================
-                        ?>
-                        </div>
-                        <?php
-                         */
-
-                        // echo '<div class="wooco_total wooco-total wooco-text"></div>';
-                        // do_action('wooco_after_components', $product);
-                        // if ($wooco_after_text = apply_filters('wooco_after_text', get_post_meta($product_id, 'wooco_after_text', true), $product_id)) {
-                        //     echo '<div class="wooco_after_text wooco-after-text wooco-text">' . do_shortcode(stripslashes($wooco_after_text)) . '</div>';
-                        // }
-                        // echo '</div>';
                     }
                 }
 
