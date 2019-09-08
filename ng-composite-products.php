@@ -178,6 +178,7 @@ if (!function_exists('wooco_init')) {
                     add_action('woocommerce_cart_item_removed', array($this, 'wooco_cart_item_removed'), 10, 2);
                     add_filter('woocommerce_cart_item_price', array($this, 'wooco_cart_item_price'), 10, 2);
                     add_filter('woocommerce_cart_item_subtotal', array($this, 'wooco_cart_item_subtotal'), 10, 2);
+                    add_filter('woocommerce_widget_shopping_cart_subtotal', array($this, 'wooco_cart_item_subtotal'), 10, 2);
 
                     // Hide on cart & checkout page
                     if (get_option('_wooco_hide_component', 'no') !== 'no') {
@@ -275,7 +276,7 @@ if (!function_exists('wooco_init')) {
                 }
 
                 function wooco_admin_menu() {
-                    add_submenu_page('wpclever', esc_html__('Menu Packages', 'wpc-composite-products'), esc_html__('Menu Packages', 'wpc-composite-products'), 'manage_options', 'wpclever-wooco', array(
+                    add_submenu_page('wpclever', 'Menu Packages', 'Menu Packages', 'manage_options', 'wpclever-wooco', array(
                         &$this,
                         'wooco_admin_menu_content',
                     ));
@@ -639,26 +640,9 @@ if (!function_exists('wooco_init')) {
 
                 function wooco_cart_item_price($price, $cart_item) {
 
+                    // composite
                     if (isset($cart_item['wooco_ids'], $cart_item['wooco_keys']) && method_exists($cart_item['data'], 'is_fixed_price') && !$cart_item['data']->is_fixed_price()) {
-                        // composite
-                        $wooco_price = $cart_item['data']->get_pricing() === 'include' ? $cart_item['data']->get_price() : 0;
-                        foreach ($cart_item['wooco_keys'] as $cart_item_key) {
-                            if (isset(WC()->cart->cart_contents[$cart_item_key])) {
-                                $wooco_price += WC()->cart->cart_contents[$cart_item_key]['data']->get_price() * WC()->cart->cart_contents[$cart_item_key]['wooco_qty'];
-                            }
-                        }
-
-                        return wc_price($wooco_price);
-                    }
-
-                    if (isset($cart_item['wooco_parent_key'])) {
-                        // Menu Packages
-                        $cart_item_key = $cart_item['wooco_parent_key'];
-                        if (isset(WC()->cart->cart_contents[$cart_item_key]) && method_exists(WC()->cart->cart_contents[$cart_item_key]['data'], 'is_fixed_price') && WC()->cart->cart_contents[$cart_item_key]['data']->is_fixed_price()) {
-                            $item_product = wc_get_product($cart_item['data']->get_id());
-
-                            return wc_price($item_product->get_price());
-                        }
+                        return wc_price($cart_item['wooco_total']);
                     }
 
                     // global $woocommerce;
@@ -668,26 +652,9 @@ if (!function_exists('wooco_init')) {
                 }
 
                 function wooco_cart_item_subtotal($subtotal, $cart_item = null) {
+                    // composite
                     if (isset($cart_item['wooco_ids'], $cart_item['wooco_keys']) && method_exists($cart_item['data'], 'is_fixed_price') && !$cart_item['data']->is_fixed_price()) {
-                        // composite
-                        $wooco_price = $cart_item['data']->get_pricing() === 'include' ? $cart_item['data']->get_price() : 0;
-                        foreach ($cart_item['wooco_keys'] as $cart_item_key) {
-                            if (isset(WC()->cart->cart_contents[$cart_item_key])) {
-                                $wooco_price += WC()->cart->cart_contents[$cart_item_key]['data']->get_price() * WC()->cart->cart_contents[$cart_item_key]['wooco_qty'];
-                            }
-                        }
-
-                        return wc_price($wooco_price * $cart_item['quantity']);
-                    }
-
-                    if (isset($cart_item['wooco_parent_key'])) {
-                        // component products
-                        $cart_item_key = $cart_item['wooco_parent_key'];
-                        if (isset(WC()->cart->cart_contents[$cart_item_key]) && method_exists(WC()->cart->cart_contents[$cart_item_key]['data'], 'is_fixed_price') && WC()->cart->cart_contents[$cart_item_key]['data']->is_fixed_price()) {
-                            $item_product = wc_get_product($cart_item['data']->get_id());
-
-                            return wc_price($item_product->get_price() * $cart_item['quantity']);
-                        }
+                        return wc_price($cart_item['wooco_total'] * $cart_item['quantity']);
                     }
 
                     return $subtotal;
@@ -854,7 +821,6 @@ if (!function_exists('wooco_init')) {
                     foreach ($cart_object->get_cart() as $cart_item_key => $cart_item) {
                         // cart total price
                         if (isset($cart_item['wooco_total']) && ($cart_item['wooco_total'] !== '') && $cart_item['data']->is_type('composite')) {
-                            // echo 'SETTING TOTAL TO $' . $cart_item['wooco_total'];
                             $base_package_price = wc_get_product($cart_item['product_id'])->get_price();
                             $deluxe_package_price = get_post_meta($cart_item['product_id'], '_deluxe_price', true);
 
