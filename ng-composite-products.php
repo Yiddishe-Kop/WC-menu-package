@@ -1206,7 +1206,7 @@ if (!function_exists('wooco_init')) {
                         'max' => 100,
                         'qty_free' => 1,
                         'qty_free_deluxe' => 1,
-                        'section' => 'night',
+                        'section' => 'first',
                     )
                 ) {
                     $wooco_search_products_id = uniqid('wooco_search_products-', false);
@@ -1238,8 +1238,8 @@ if (!function_exists('wooco_init')) {
                                         <div class="wooco_component_content_line_label">In which Section?</div>
                                         <div class="wooco_component_content_line_value">
                                         <select name="wooco_components[section][]">
-                                          <option value="night" <?php echo ($component['section'] === 'night' ? 'selected' : ''); ?>>Night Meal</option>
-                                          <option value="day" <?php echo ($component['section'] === 'day' ? 'selected' : ''); ?>>Day Meal</option>
+                                          <option value="first" <?php echo ($component['section'] === 'first' ? 'selected' : ''); ?>>First Meal</option>
+                                          <option value="second" <?php echo ($component['section'] === 'second' ? 'selected' : ''); ?>>Second Meal</option>
                                           <option value="extras" <?php echo ($component['section'] === 'extras' ? 'selected' : ''); ?>>Extras</option>
                                         </select>
                                         </div>
@@ -1540,10 +1540,10 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                     $category_name = get_the_category_by_ID($product->get_category_ids()[0]);
 
                     $is_shabbos = $category_name == 'Shabbos';
-                    $shabbos_sections = ['night' => 'Night Meal', 'day' => 'Day Meal', 'extras' => 'Extras'];
+                    $shabbos_sections = ['first' => 'Night Meal', 'second' => 'Day Meal', 'extras' => 'Extras'];
 
                     $is_supper = $category_name == 'Gourmet Meals';
-                    $supper_sections = ['first' => 'First', 'main' => 'Main', 'extras' => 'Extras'];
+                    $supper_sections = ['first' => 'First Course', 'second' => 'Main Course', 'extras' => 'Extras'];
 
                     $sections = ($is_shabbos) ? $shabbos_sections : $supper_sections;
 
