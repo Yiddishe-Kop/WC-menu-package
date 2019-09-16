@@ -733,6 +733,10 @@ if (!function_exists('wooco_init')) {
                             $wooco_people = $_POST['wooco_people'];
                             unset($_POST['wooco_people']);
                         }
+                        if (isset($_POST['wooco_date'])) {
+                            $wooco_date = $_POST['wooco_date'];
+                            unset($_POST['wooco_date']);
+                        }
 
                         $wooco_ids = $this->wooco_clean_ids($wooco_ids);
                         if (!empty($wooco_ids)) {
@@ -749,6 +753,9 @@ if (!function_exists('wooco_init')) {
                         }
                         if (!empty($wooco_people)) {
                             $cart_item_data['wooco_people'] = $wooco_people;
+                        }
+                        if (!empty($wooco_date)) {
+                            $cart_item_data['wooco_date'] = $wooco_date;
                         }
                     }
 
@@ -840,7 +847,7 @@ if (!function_exists('wooco_init')) {
                             $is_deluxe = $cart_item['is_deluxe'] == 'true';
                             $base_price = $is_deluxe ? $deluxe_package_price : $base_package_price;
 
-                            $my_total = ($cart_item['wooco_total'] * $cart_item['wooco_people']) + $cart_item['wooco_extra'];
+                            $my_total = ($cart_item['wooco_total'] * $cart_item['wooco_people']) + (isset($cart_item['wooco_extra']) ? $cart_item['wooco_extra'] : 0);
 
                             $cart_item['data']->set_price($my_total);
 
@@ -848,9 +855,6 @@ if (!function_exists('wooco_init')) {
                                 // some hacker hacked the price - sound the alarm!
                                 $cart_item['data']->set_price($base_price);
                             }
-
-                            // to-do: add extra price to cart
-                            $cart_object->add_fee('Extras', $cart_item['wooco_extra'], true, 'standard');
 
                         }
                         // echo print_r($cart_item, true) . ' <| ';
@@ -1034,11 +1038,20 @@ if (!function_exists('wooco_init')) {
                     if (isset($values['wooco_parent_id'])) {
                         $item->update_meta_data('wooco_parent_id', $values['wooco_parent_id']);
                     }
+                    if (isset($values['wooco_date'])) {
+                        $item->update_meta_data('Date', $values['wooco_date']);
+                    }
+                    if (isset($values['wooco_date'])) {
+                        $item->update_meta_data('Date', $values['wooco_date']);
+                    }
                     if (isset($values['wooco_extra'])) {
                         $item->update_meta_data('Extras', $values['wooco_extra']);
                     }
                     if (isset($values['wooco_people'])) {
                         $item->update_meta_data('People', $values['wooco_people']);
+                    }
+                    if (isset($values['is_deluxe'])) {
+                        $item->update_meta_data('Package', $values['is_deluxe'] ? 'Deluxe' : 'Basic');
                     }
                     if (isset($values['wooco_ids'])) {
                         $item->update_meta_data('wooco_ids', $values['wooco_ids']);
@@ -1050,6 +1063,9 @@ if (!function_exists('wooco_init')) {
                 }
 
                 function wooco_before_order_item_meta($item_id) {
+                    if ($wooco_date = wc_get_order_item_meta($item_id, 'Date', true)) {
+                        echo sprintf('(Date: <b>%s</b>) ', $wooco_date);
+                    }
                     if ($wooco_people = wc_get_order_item_meta($item_id, 'People', true)) {
                         echo sprintf('(<b>%s</b> People) ', $wooco_people);
                     }
