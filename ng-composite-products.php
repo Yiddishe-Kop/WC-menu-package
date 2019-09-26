@@ -729,6 +729,10 @@ if (!function_exists('wooco_init')) {
                             $wooco_extra = $_POST['wooco_extra'];
                             unset($_POST['wooco_extra']);
                         }
+                        if (isset($_POST['wooco_extra_items'])) {
+                            $wooco_extra_items = $_POST['wooco_extra_items'];
+                            unset($_POST['wooco_extra_items']);
+                        }
                         if (isset($_POST['wooco_people'])) {
                             $wooco_people = $_POST['wooco_people'];
                             unset($_POST['wooco_people']);
@@ -750,6 +754,9 @@ if (!function_exists('wooco_init')) {
                         }
                         if (!empty($wooco_extra)) {
                             $cart_item_data['wooco_extra'] = $wooco_extra;
+                        }
+                        if (!empty($wooco_extra_items)) {
+                            $cart_item_data['wooco_extra_items'] = $wooco_extra_items;
                         }
                         if (!empty($wooco_people)) {
                             $cart_item_data['wooco_people'] = $wooco_people;
@@ -1034,6 +1041,20 @@ if (!function_exists('wooco_init')) {
                     return $formatted_meta;
                 }
 
+                function get_extras_list($extra_items_string) {
+                    $wooco_items = explode(',', $extra_items_string);
+                    $wooco_items_str = '';
+                    if (is_array($wooco_items) && count($wooco_items) > 0) {
+                        foreach ($wooco_items as $wooco_item) {
+                            $wooco_item_arr = explode('/', $wooco_item);
+                            $wooco_item_id = absint(isset($wooco_item_arr[0]) ? $wooco_item_arr[0] : 0);
+                            $wooco_item_qty = absint(isset($wooco_item_arr[1]) ? $wooco_item_arr[1] : 1);
+                            $wooco_items_str .= ($wooco_item_qty) . ' × ' . get_the_title($wooco_item_id) . '; ';
+                        }
+                    }
+                    return trim($wooco_items_str, '; ');
+                }
+
                 function wooco_add_order_item_meta($item, $cart_item_key, $values) {
                     if (isset($values['wooco_parent_id'])) {
                         $item->update_meta_data('wooco_parent_id', $values['wooco_parent_id']);
@@ -1041,11 +1062,11 @@ if (!function_exists('wooco_init')) {
                     if (isset($values['wooco_date'])) {
                         $item->update_meta_data('Date', $values['wooco_date']);
                     }
-                    if (isset($values['wooco_date'])) {
-                        $item->update_meta_data('Date', $values['wooco_date']);
-                    }
                     if (isset($values['wooco_extra'])) {
-                        $item->update_meta_data('Extras', $values['wooco_extra']);
+                        $item->update_meta_data('Extras', '$' . $values['wooco_extra']);
+                    }
+                    if (isset($values['wooco_extra_items'])) {
+                        $item->update_meta_data('Extra Items', $this->get_extras_list($values['wooco_extra_items']));
                     }
                     if (isset($values['wooco_people'])) {
                         $item->update_meta_data('People', $values['wooco_people']);
@@ -1063,14 +1084,20 @@ if (!function_exists('wooco_init')) {
                 }
 
                 function wooco_before_order_item_meta($item_id) {
+                    if ($wooco_deluxe = wc_get_order_item_meta($item_id, 'Package', true)) {
+                        echo sprintf('<b>%s</b> ', $wooco_deluxe);
+                    }
                     if ($wooco_date = wc_get_order_item_meta($item_id, 'Date', true)) {
                         echo sprintf('(Date: <b>%s</b>) ', $wooco_date);
                     }
                     if ($wooco_people = wc_get_order_item_meta($item_id, 'People', true)) {
                         echo sprintf('(<b>%s</b> People) ', $wooco_people);
                     }
-                    if ($wooco_extra = wc_get_order_item_meta($item_id, 'Extras', true)) {
-                        echo sprintf('(Extras: <b>$%s</b>)', $wooco_extra);
+                    if ($wooco_extra = wc_get_order_item_meta($item_id, 'Extra Items', true)) {
+                        echo sprintf('(Extra Items: <b>%s</b>) ', $wooco_extra);
+                    }
+                    if ($wooco_extra_items = wc_get_order_item_meta($item_id, 'Extras', true)) {
+                        echo sprintf('(Extras: <b>%s</b>)', $wooco_extra_items);
                     }
                     if ($wooco_parent_id = wc_get_order_item_meta($item_id, 'wooco_parent_id', true)) {
                         echo sprintf(esc_html__('(in %s)', 'wpc-composite-products'), get_the_title($wooco_parent_id));
