@@ -143,15 +143,12 @@ if (!function_exists('wooco_init')) {
                     add_action('woocommerce_before_add_to_cart_button', array($this, 'wooco_add_to_cart_button'));
 
                     // Add to cart
-                    add_action('woocommerce_add_to_cart', array($this, 'wooco_add_to_cart'), 10, 6);
                     add_filter('woocommerce_add_cart_item_data', array($this, 'wooco_add_cart_item_data'), 10, 2);
-                    add_filter('woocommerce_get_cart_item_from_session', array(
-                        $this,
-                        'wooco_get_cart_item_from_session',
-                    ), 10, 2);
+                    add_action('woocommerce_add_to_cart', array($this, 'wooco_add_to_cart'), 10, 6);
+                    add_filter('woocommerce_get_cart_item_from_session', array($this, 'wooco_get_cart_item_from_session'), 10, 2);
 
                     // Check in_stock
-                    //add_filter( 'woocommerce_product_is_in_stock', array( $this, 'wooco_product_is_in_stock' ), 99, 2 );
+                    //add_filter('woocommerce_product_is_in_stock', array( $this, 'wooco_product_is_in_stock' ), 99, 2 );
 
                     // Check sold individually
                     add_filter('woocommerce_add_to_cart_sold_individually_found_in_cart', array(
@@ -254,7 +251,6 @@ if (!function_exists('wooco_init')) {
                         $this,
                         'wooco_before_calculate_totals',
                     ), 10, 1);
-                    // add_action('woocommerce_cart_calculate_fees', array($this, 'ng_add_extras'), 1);
 
                     // Shipping
                     add_filter('woocommerce_cart_shipping_packages', array(
@@ -847,26 +843,21 @@ if (!function_exists('wooco_init')) {
 
                     foreach ($cart_object->get_cart() as $cart_item_key => $cart_item) {
                         // package price
-                        if (isset($cart_item['wooco_total']) && ($cart_item['wooco_total'] !== '') && $cart_item['data']->is_type('composite')) {
+                        if ($cart_item['data']->is_type('composite')) {
                             $base_package_price = wc_get_product($cart_item['product_id'])->get_price();
                             $deluxe_package_price = get_post_meta($cart_item['product_id'], '_deluxe_price', true);
 
                             $is_deluxe = $cart_item['is_deluxe'] == 'true';
                             $base_price = $is_deluxe ? $deluxe_package_price : $base_package_price;
 
-                            $my_total = ($cart_item['wooco_total'] * $cart_item['wooco_people']) + (isset($cart_item['wooco_extra']) ? $cart_item['wooco_extra'] : 0);
+                            $extra_price = $this->ng_get_extras_price($cart_item['wooco_extra_items']);
+                            $my_total = ($base_price * $cart_item['wooco_people']) + $extra_price;
+                            var_dump($my_total);
 
                             $cart_item['data']->set_price($my_total);
-
-                            if ($base_price > $cart_item['wooco_total']) {
-                                // some hacker hacked the price - sound the alarm!
-                                $cart_item['data']->set_price($base_price);
-                            }
-
                         }
-                        // echo print_r($cart_item, true) . ' <| ';
 
-                        // child product price
+                        // child product price - We set them all to zero [the price is added on the package (parent)]
                         if (isset($cart_item['wooco_parent_id']) && ($cart_item['wooco_parent_id'] !== '')) {
                             $parent_product = wc_get_product($cart_item['wooco_parent_id']);
                             if (!$parent_product || !$parent_product->is_type('composite')) {
@@ -877,12 +868,7 @@ if (!function_exists('wooco_init')) {
                             } else {
 
                                 // update component prices
-                                $price = 0;
-                                // $price = $this->getFinalPrice($cart_item);
-                                if (!is_checkout()) { // debugging
-                                    // echo '<h2>Item: ' . wc_get_product($cart_item['product_id'])->get_title() . ' - Final price: ' . $price . '</h2>';
-                                }
-                                $cart_item['data']->set_price($price);
+                                $cart_item['data']->set_price(0);
 
                                 if (($wooco_discount_percent = get_post_meta($cart_item['wooco_parent_id'], 'wooco_discount_percent', true)) && is_numeric($wooco_discount_percent) && ((float) $wooco_discount_percent < 100) && ((float) $wooco_discount_percent > 0)) {
                                     if ($cart_item['variation_id'] > 0) {
@@ -905,18 +891,19 @@ if (!function_exists('wooco_init')) {
                     }
                 }
 
-                function ng_add_extras() { // add fees for extras in package
-                    global $woocommerce;
-
-                    if (is_admin() && !defined('DOING_AJAX')) {
-                        return;
+                function ng_get_extras_price($extra_items_string) { // add fees for extras in package
+                    $extra_price = 0;
+                    $extra_items = explode(',', $extra_items_string);
+                    if (is_array($extra_items) && count($extra_items) > 0) {
+                        foreach ($extra_items as $wooco_item) {
+                            $item_arr = explode('/', $wooco_item);
+                            $item_id = absint(isset($item_arr[0]) ? $item_arr[0] : 0);
+                            $item_qty = absint(isset($item_arr[1]) ? $item_arr[1] : 1);
+                            $price = wc_get_product($item_id)->get_price();
+                            $extra_price += $price * $item_qty;
+                        }
                     }
-
-                    // change the $fee to set the surcharge to a value to suit
-                    $fee = 1.00;
-
-                    $woocommerce->cart->add_fee('Extras', $fee, true, 'standard');
-
+                    return $extra_price;
                 }
 
                 function getFinalPrice($cart_item) {
@@ -1624,7 +1611,6 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                 // outputs the product html
                 function wooco_show_items() {
                     global $product;
-                    $product_id = $product->get_id();
                     $category_name = get_the_category_by_ID($product->get_category_ids()[0]);
 
                     $is_shabbos = $category_name == 'Shabbos';
