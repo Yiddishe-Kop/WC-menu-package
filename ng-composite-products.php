@@ -632,6 +632,10 @@ if (!function_exists('wooco_init')) {
                         }
                     }
 
+                    if (isset($item['wooco_people'])) {
+                            $output .= '<small style="margin-inline-start: 8px; color: var(--grey5);">'. $item['wooco_people'] .' people</small>';
+                    }
+
                     return ($output == '' ? $name : $output);
                 }
 
@@ -1076,7 +1080,7 @@ if (!function_exists('wooco_init')) {
                 function wooco_product_is_in_stock($in_stock, $_product) {
                     if ($_product->is_type('composite') && ($wooco_components = $_product->get_components())) {
                         foreach ($wooco_components as $wooco_component) {
-                            if (($wooco_component['optional'] === 'yes') || (($wooco_component_type = $wooco_component['type']) === '') || empty($wooco_component[$wooco_component_type])) {
+                            if ((($wooco_component_type = $wooco_component['type']) === '') || empty($wooco_component[$wooco_component_type])) {
                                 continue;
                             }
                             $wooco_i = false;
@@ -1239,8 +1243,7 @@ if (!function_exists('wooco_init')) {
                         'categories' => '',
                         'products' => '',
                         'default' => '',
-                        'deluxe_only' => 'no',
-                        'optional' => 'no',
+                        'show_in' => 'both',
                         'qty' => 1,
                         'custom_qty' => 'no',
                         'min' => 0,
@@ -1323,20 +1326,12 @@ if (!function_exists('wooco_init')) {
                 prePopulate: [' . $pre_populate_products . '], theme: "wpc", hintText: "Type to search product"}); jQuery("#' . $wooco_search_default_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id", {
                 prePopulate: [' . $pre_populate_default . '], tokenLimit: 1, theme: "wpc", hintText: "Type to search product"});</script>'; ?>
                                     <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">Only in Deluxe?</div>
+                                        <div class="wooco_component_content_line_label">Show in:</div>
                                         <div class="wooco_component_content_line_value">
-                                            <select name="wooco_components[deluxe_only][]">
-                                              <option value="no" <?php echo ($component['deluxe_only'] === 'no' ? 'selected' : ''); ?>>No</option>
-                                              <option value="yes" <?php echo ($component['deluxe_only'] === 'yes' ? 'selected' : ''); ?>>Yes</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="wooco_component_content_line">
-                                        <div class="wooco_component_content_line_label">Optional?</div>
-                                        <div class="wooco_component_content_line_value">
-                                            <select name="wooco_components[optional][]">
-                                              <option value="no" <?php echo ($component['optional'] === 'no' ? 'selected' : ''); ?>>No</option>
-                                              <option value="yes" <?php echo ($component['optional'] === 'yes' ? 'selected' : ''); ?>>Yes</option>
+                                            <select name="wooco_components[show_in][]">
+                                              <option value="both" <?php echo ($component['show_in'] === 'both' ? 'selected' : ''); ?>>Both</option>
+                                              <option value="basic" <?php echo ($component['show_in'] === 'basic' ? 'selected' : ''); ?>>Basic</option>
+                                              <option value="deluxe" <?php echo ($component['show_in'] === 'deluxe' ? 'selected' : ''); ?>>Deluxe</option>
                                             </select>
                                         </div>
                                     </div>

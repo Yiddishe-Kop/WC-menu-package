@@ -89,7 +89,7 @@ body.woocommerce-no-js .wooco-wrap + form.cart {
 }
 
 .pill {
-  margin-inline-start: 20px;
+  margin-inline-start: 10px;
   padding: 3px 8px;
   background-color: var(--grey2);
   color: var(--grey6);
