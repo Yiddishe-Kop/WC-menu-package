@@ -852,7 +852,7 @@ if (!function_exists('wooco_init')) {
 
                             $extra_price = $this->ng_get_extras_price($cart_item['wooco_extra_items']);
                             $my_total = ($base_price * $cart_item['wooco_people']) + $extra_price;
-                            var_dump($my_total);
+                            // var_dump($my_total);
 
                             $cart_item['data']->set_price($my_total);
                         }
@@ -899,48 +899,14 @@ if (!function_exists('wooco_init')) {
                             $item_arr = explode('/', $wooco_item);
                             $item_id = absint(isset($item_arr[0]) ? $item_arr[0] : 0);
                             $item_qty = absint(isset($item_arr[1]) ? $item_arr[1] : 1);
-                            $price = wc_get_product($item_id)->get_price();
-                            $extra_price += $price * $item_qty;
+
+                            if ($product = wc_get_product($item_id)) {
+                              $price = $product->get_price();
+                              $extra_price += $price * $item_qty;
+                            }
                         }
                     }
                     return $extra_price;
-                }
-
-                function getFinalPrice($cart_item) {
-                    // check if is free in package & return price
-                    $item_id = $cart_item['product_id'];
-                    $price = floatval($cart_item['data']->get_price());
-
-                    $components_arr = get_post_meta($cart_item['wooco_parent_id'], 'wooco_components'); // gets package menu components
-                    foreach ($components_arr as $components) {
-                        foreach ($components as $component) {
-
-                            $found = false;
-
-                            $prod_arr = explode(',', $component['products']);
-                            if (is_array($prod_arr)) {
-                                if (in_array($item_id, $prod_arr)) {
-                                    $found = true;
-                                }
-                            } elseif ($item_id == $component['products']) {
-                                $found = true;
-                            }
-                            // echo print_r($component, true) . ' | ' . $item_id . ' :: ' . ($found ? 'found' : 'not found') . $prod_arr;
-
-                            if ($found) {
-
-                                $qty_free = $component['qty_free'];
-                                $final_price = (($cart_item['quantity'] - $qty_free) * $price) / $cart_item['quantity']; // this is the trick! [divide by qty]
-
-                                if ($cart_item['quantity'] <= $qty_free) { // don't charge extra
-                                    return 0;
-                                } else { // only charge for extras
-                                    return $final_price;
-                                }
-                            }
-                        }
-                    }
-                    return $price;
                 }
 
                 function wooco_item_visible($visible, $item) {
