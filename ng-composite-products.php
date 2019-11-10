@@ -1128,17 +1128,19 @@ if (!function_exists('wooco_init')) {
                 }
 
                 function wooco_ajax_search() {
+
                     $q = isset($_GET['q']) ? $_GET['q'] : '';
                     $ajax_type = urldecode(isset($_GET['ajax_type']) ? $_GET['ajax_type'] : 'post_type');
                     $ajax_get = urldecode(isset($_GET['ajax_get']) ? $_GET['ajax_get'] : 'post');
                     $ajax_field = urldecode(isset($_GET['ajax_field']) ? $_GET['ajax_field'] : 'id');
+                    $vendor_id = urldecode(isset($_GET['vendor_id']) ? $_GET['vendor_id'] : -1);
                     $ajax_get_arr = explode(',', $ajax_get);
                     $arr = array();
                     if ($ajax_type === 'post_type') {
                         $params = array(
                             'posts_per_page' => 10,
                             'post_type' => $ajax_get_arr,
-                            'author' => get_current_user_id(),
+                            'author' => $vendor_id,
                             'ignore_sticky_posts' => 1,
                             's' => $q,
                         );
@@ -1325,9 +1327,10 @@ if (!function_exists('wooco_init')) {
                                                    value="<?php echo $component['default']; ?>"/>
                                         </div>
                                     </div>
-									<?php echo '<script>jQuery("#' . $wooco_search_products_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id", {
-                prePopulate: [' . $pre_populate_products . '], theme: "wpc", hintText: "Type to search product"}); jQuery("#' . $wooco_search_default_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id", {
-                prePopulate: [' . $pre_populate_default . '], tokenLimit: 1, theme: "wpc", hintText: "Type to search product"});</script>'; ?>
+                    <?php global $post;
+                    echo '<script>jQuery("#' . $wooco_search_products_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id&vendor_id=' . $post->post_author . '", {
+                prePopulate: [' . $pre_populate_products . '], theme: "wpc", hintText: "Type to search product"}); jQuery("#' . $wooco_search_default_id . '").tokenInput("' . esc_js(admin_url('admin-ajax.php')) . '?action=wooco_ajax_search&ajax_type=post_type&ajax_get=product&ajax_field=id&vendor_id=' . $post->post_author . '", {
+                prePopulate: [' . $pre_populate_default . '], tokenLimit: 1, theme: "wpc", hintText: "Type to search product"});</script>';?>
                                     <div class="wooco_component_content_line">
                                         <div class="wooco_component_content_line_label">Show in:</div>
                                         <div class="wooco_component_content_line_value">
