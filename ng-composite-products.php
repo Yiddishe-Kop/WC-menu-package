@@ -633,7 +633,7 @@ if (!function_exists('wooco_init')) {
                     }
 
                     if (isset($item['wooco_people'])) {
-                            $output .= '<small style="margin-inline-start: 8px; color: var(--grey5);">'. $item['wooco_people'] .' people</small>';
+                        $output .= '<small style="margin-inline-start: 8px; color: var(--grey5);">' . $item['wooco_people'] . ' people</small>';
                     }
 
                     return ($output == '' ? $name : $output);
@@ -854,9 +854,11 @@ if (!function_exists('wooco_init')) {
                             $is_deluxe = $cart_item['is_deluxe'] == 'true';
                             $base_price = $is_deluxe ? $deluxe_package_price : $base_package_price;
 
-                            $extra_price = $this->ng_get_extras_price($cart_item['wooco_extra_items']);
+                            $extra_price = 0;
+                            if (isset($cart_item['wooco_extra_items'])) {
+                                $extra_price = $this->ng_get_extras_price($cart_item['wooco_extra_items']);
+                            }
                             $my_total = ($base_price * $cart_item['wooco_people']) + $extra_price;
-                            // var_dump($my_total);
 
                             $cart_item['data']->set_price($my_total);
                         }
@@ -905,8 +907,8 @@ if (!function_exists('wooco_init')) {
                             $item_qty = absint(isset($item_arr[1]) ? $item_arr[1] : 1);
 
                             if ($product = wc_get_product($item_id)) {
-                              $price = $product->get_price();
-                              $extra_price += $price * $item_qty;
+                                $price = $product->get_price();
+                                $extra_price += $price * $item_qty;
                             }
                         }
                     }
@@ -1136,6 +1138,7 @@ if (!function_exists('wooco_init')) {
                         $params = array(
                             'posts_per_page' => 10,
                             'post_type' => $ajax_get_arr,
+                            'author' => get_current_user_id(),
                             'ignore_sticky_posts' => 1,
                             's' => $q,
                         );
