@@ -1397,34 +1397,27 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                             </tr>
                             </tfoot>
                         </table>
-                        <table>
+                        <table class="ss-hidden">
                             <tr class="wooco_tr_space">
-                                <th><?php esc_html_e('Pricing', 'wpc-composite-products');?></th>
+                                <th>Pricing</th>
                                 <td>
                                     <select id="wooco_pricing" name="wooco_pricing">
-                                        <option value="only" <?php echo (get_post_meta($post_id, 'wooco_pricing', 'exclude') === 'only' ? 'selected' : ''); ?>><?php esc_html_e('Only base price', 'wpc-composite-products');?></option>
-                                        <option value="include" <?php echo (get_post_meta($post_id, 'wooco_pricing', 'exclude') === 'include' ? 'selected' : ''); ?>><?php esc_html_e('Include base price', 'wpc-composite-products');?></option>
-                                        <option value="exclude" <?php echo (get_post_meta($post_id, 'wooco_pricing', 'exclude') === 'exclude' ? 'selected' : ''); ?>><?php esc_html_e('Exclude base price', 'wpc-composite-products');?></option>
+                                        <option value="only" selected>Only base price</option>
                                     </select>
-                                    <div style="display: inline-block; width: 100%">
-										<?php esc_html_e('"Base price" is the price was set in the General tab.', 'wpc-composite-products');?>
-                                        <br/>
-										<?php esc_html_e('If you choose "Only base price", the price don\'t change when selecting the component product.', 'wpc-composite-products');?>
-                                    </div>
                                 </td>
                             </tr>
                             <tr class="wooco_tr_space">
-                                <th><?php esc_html_e('Discount', 'wpc-composite-products');?></th>
+                                <th>Discount</th>
                                 <td style="vertical-align: middle; line-height: 30px;">
                                     <input id="wooco_discount_percent" name="wooco_discount_percent" type="number"
                                            min="0.0001" step="0.0001"
                                            max="99.9999"
                                            value="<?php echo (get_post_meta($post_id, 'wooco_discount_percent', true) ?: ''); ?>"
-                                           style="width: 80px"/>%. <?php esc_html_e('Only applied for Courses.', 'wpc-composite-products');?>
+                                           style="width: 80px"/>
                                 </td>
                             </tr>
                             <tr class="wooco_tr_space">
-                                <th><?php esc_html_e('Quantity', 'wpc-composite-products');?></th>
+                                <th>Quantity</th>
                                 <td style="vertical-align: middle; line-height: 30px;">
                                     Min <input name="wooco_qty_min" type="number"
                                                min="1" step="1" max="999999"
@@ -1436,11 +1429,11 @@ $wooco_components = get_post_meta($post_id, 'wooco_components', true);
                                 </td>
                             </tr>
                             <tr class="wooco_tr_space">
-                                <th><?php esc_html_e('Shipping fee', 'wpc-composite-products');?></th>
+                                <th>Shipping fee</th>
                                 <td>
                                     <select id="wooco_shipping_fee" name="wooco_shipping_fee">
-                                        <option value="whole" <?php echo (get_post_meta($post_id, 'wooco_shipping_fee', true) === 'whole' ? 'selected' : ''); ?>><?php esc_html_e('Apply to the whole composite', 'wpc-composite-products');?></option>
-                                        <option value="each" <?php echo (get_post_meta($post_id, 'wooco_shipping_fee', true) === 'each' ? 'selected' : ''); ?>><?php esc_html_e('Apply to each component product', 'wpc-composite-products');?></option>
+                                        <option value="whole" selected><?php esc_html_e('Apply to the whole composite', 'wpc-composite-products');?></option>
+                                        <option value="each"><?php esc_html_e('Apply to each component product', 'wpc-composite-products');?></option>
                                     </select>
                                 </td>
                             </tr>
