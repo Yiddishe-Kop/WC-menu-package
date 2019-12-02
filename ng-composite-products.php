@@ -854,6 +854,11 @@ if (!function_exists('wooco_init')) {
                             $is_deluxe = $cart_item['is_deluxe'] == 'true';
                             $base_price = $is_deluxe ? $deluxe_package_price : $base_package_price;
 
+                            // add the percentage hike
+                            global $WCMp;
+                            $percentage = $WCMp->vendor_caps->payment_cap['percentage_hike'];
+                            $base_price = round($base_price * $percentage);
+
                             $extra_price = 0;
                             if (isset($cart_item['wooco_extra_items'])) {
                                 $extra_price = $this->ng_get_extras_price($cart_item['wooco_extra_items']);
@@ -1133,7 +1138,7 @@ if (!function_exists('wooco_init')) {
                     $ajax_type = urldecode(isset($_GET['ajax_type']) ? $_GET['ajax_type'] : 'post_type');
                     $ajax_get = urldecode(isset($_GET['ajax_get']) ? $_GET['ajax_get'] : 'post');
                     $ajax_field = urldecode(isset($_GET['ajax_field']) ? $_GET['ajax_field'] : 'id');
-                    $vendor_id = urldecode(isset($_GET['vendor_id']) ? $_GET['vendor_id'] : -1);
+                    $vendor_id = urldecode(isset($_GET['vendor_id']) ? $_GET['vendor_id'] : -1); // used to only show products by current vendor
                     $ajax_get_arr = explode(',', $ajax_get);
                     $arr = array();
                     if ($ajax_type === 'post_type') {
