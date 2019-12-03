@@ -1139,8 +1139,19 @@ if (!function_exists('wooco_init')) {
                     $ajax_get = urldecode(isset($_GET['ajax_get']) ? $_GET['ajax_get'] : 'post');
                     $ajax_field = urldecode(isset($_GET['ajax_field']) ? $_GET['ajax_field'] : 'id');
                     $vendor_id = urldecode(isset($_GET['vendor_id']) ? $_GET['vendor_id'] : -1); // used to only show products by current vendor
+
+
+                    if ($vendor = get_wcmp_vendor($vendor_id)) {
+                      $username = $vendor->page_title;
+                    } else {
+                      $vendor = get_userdata($vendor_id);
+                      $username = $vendor->user_login;
+                    }
+
                     $ajax_get_arr = explode(',', $ajax_get);
                     $arr = array();
+                    $arr[] = array('id' => NULL, 'name' => '-- Showing products from: ' . $username . ' [don\'t select this] --');
+
                     if ($ajax_type === 'post_type') {
                         $params = array(
                             'posts_per_page' => 10,
