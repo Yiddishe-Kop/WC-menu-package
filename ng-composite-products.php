@@ -855,13 +855,13 @@ if (!function_exists('wooco_init')) {
                             $base_price = $is_deluxe ? $deluxe_package_price : $base_package_price;
 
                             // add the percentage hike
-                            global $WCMp;
-                            $percentage = $WCMp->vendor_caps->payment_cap['percentage_hike'];
+                            $percentage = get_percentage_hike();
                             $base_price = round($base_price * $percentage);
 
                             $extra_price = 0;
                             if (isset($cart_item['wooco_extra_items'])) {
                                 $extra_price = $this->ng_get_extras_price($cart_item['wooco_extra_items']);
+                                $extra_price = round($extra_price * $percentage);
                             }
                             $my_total = ($base_price * $cart_item['wooco_people']) + $extra_price;
 
